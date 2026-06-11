@@ -14,4 +14,4 @@ convert and download youtube videos in any format.
 
 ## Credits
 
-goes to [y2mate](https://p.savenow.to) for the api.
+goes to [y2mate](https://p.savenow.to) for the api and [cur.et/youtube](https://cur.et/youtube) for the design inspiration.
