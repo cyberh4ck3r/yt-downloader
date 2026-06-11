@@ -1,4 +1,4 @@
-# yt-downloader
+# YouTube Downloader
 
 convert and download youtube videos in any format.
 
