@@ -1,7 +1,8 @@
 {
-  "name": "yt-download",
-  "version": "0.1.0",
+  "name": "yt-downloader",
+  "version": "1.0.0",
   "private": true,
+  "author": "cyberh4ck3r",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "lucide-react": "^1.17.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4"
