@@ -12,10 +12,22 @@ type InitResult = {
 };
 
 function formatDuration(sec: number): string {
+  if (typeof sec !== 'number' || isNaN(sec)) return '00:00:00';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
+  const s = Math.floor(sec % 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+async function fetchDurationFromYT(videoId: string): Promise<number | null> {
+  try {
+    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+    const html = await res.text();
+    const match = html.match(/"lengthSeconds":"(\d+)"/);
+    return match ? parseInt(match[1]) : null;
+  } catch {
+    return null;
+  }
 }
 
 type StatusResult = {
@@ -99,7 +111,7 @@ export default function Home() {
 
     try {
       const quality = formatMap[format] || (mode === "audio" ? "mp3" : "720");
-      const initUrl = `https://p.savenow.to/api/v2/download?format=${quality}&url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+      const initUrl = `/api/savenow/v2/download?format=${quality}&url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
       const initRes = await fetch(initUrl);
       const initData = await initRes.json();
 
@@ -115,6 +127,7 @@ export default function Home() {
         const oembedData = await oembedRes.json();
         channel = oembedData.author_name || null;
       } catch {}
+      channel = channel || initData.author || initData.channel || initData.info?.author || null;
 
       setInit({
         id: initData.id,
@@ -122,13 +135,20 @@ export default function Home() {
         title: initData.title || initData.info?.title,
         thumbnail: initData.thumbnail_url,
         channel,
-        duration: null,
+        duration: initData.duration || initData.info?.duration || initData.length || initData.info?.length || null,
       });
       setProgress(0);
 
+      const videoId = extractVideoId(url);
+      if (videoId) {
+        fetchDurationFromYT(videoId).then(d => {
+          if (d) setInit(prev => prev?.duration ? prev : { ...prev!, duration: d });
+        });
+      }
+
       const interval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`https://p.savenow.to/api/progress?id=${initData.id}`);
+          const statusRes = await fetch(`/api/savenow/progress?id=${initData.id}`);
           const statusData = await statusRes.json();
           setStatus({
             success: statusData.success === 1,
@@ -137,6 +157,20 @@ export default function Home() {
             downloadUrl: statusData.download_url || null,
             title: statusData.title || null,
           });
+
+          const statusDuration = statusData.duration || statusData.info?.duration || statusData.length || statusData.info?.length || null;
+          if (statusDuration) {
+            setInit(prev => {
+              if (!prev || prev.duration) return prev;
+              return { ...prev, duration: statusDuration };
+            });
+          }
+          if (statusData.title && !initData.title) {
+            setInit(prev => {
+              if (!prev || prev.title) return prev;
+              return { ...prev, title: statusData.title };
+            });
+          }
 
           if (statusData.success === 1 && statusData.download_url) {
             setProgress(100);
@@ -179,7 +213,7 @@ export default function Home() {
           <div className="space-y-4">
             <div>
               <BlurFade delay={0.1}>
-                <h1 className="text-2xl font-bold tracking-tight text-white">About</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white">YouTube Downloader</h1>
               </BlurFade>
             </div>
             <BlurFade delay={0.2}>
@@ -282,7 +316,7 @@ export default function Home() {
                 )}
 
                 {status?.success && status.downloadUrl && (
-                  <a href={status.downloadUrl} target="_blank" download
+                  <a href={status.downloadUrl} download={`${(init.title || 'video').replace(/[<>:"\/\\|?*]/g, '_')}.${mode === 'audio' ? format : 'mp4'}`}
                     className="flex items-center justify-center gap-2 w-full rounded-lg bg-white py-2.5 text-sm font-bold text-black transition hover:bg-white/90">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="size-4" fill="currentColor"><path d="M256 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 210.7-41.4-41.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0l96-96c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 242.7 256 32zM64 320c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l320 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-46.9 0-56.6 56.6c-31.2 31.2-81.9 31.2-113.1 0L110.9 320 64 320zm304 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>
                     Download

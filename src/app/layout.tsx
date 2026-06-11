@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "yt-downloader",
+  title: "YouTube Downloader",
   description: "convert and download youtube videos in any format.",
   icons: {
     icon: {
