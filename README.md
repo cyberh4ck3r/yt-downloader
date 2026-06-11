@@ -4,18 +4,14 @@ convert and download youtube videos in any format.
 
 ![screenshot](screenshot.png)
 
-## usage
+## Usage
 
-1. paste a youtube url
-2. choose audio or video
-3. pick format or quality
-4. click convert
-5. download
+1. Paste a YouTube URL into the input field
+2. Select Audio or Video mode
+3. Choose your preferred format or quality
+4. Click Convert and wait for the download to prepare
+5. Download the file
 
-## api
+## Credits
 
-uses the [y2mate](https://p.savenow.to) api under the hood.
-
-## license
-
-mit
+goes to [y2mate](https://p.savenow.to) for the api.

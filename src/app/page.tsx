@@ -68,6 +68,20 @@ export default function Home() {
   const audioFormats = ["mp3", "m4a", "wav", "flac", "ogg", "opus", "aac"];
   const videoQualities = ["360", "480", "720", "1080", "1440", "4k"];
 
+  const API_KEY = "dfcb6d76f2f6a9894gjkege8a4ab232222";
+  const formatMap: Record<string, string> = {
+    "mp3": "mp3", "m4a": "m4a", "wav": "wav", "flac": "flac",
+    "ogg": "ogg", "opus": "opus", "aac": "aac",
+    "144": "144", "240": "240", "360": "360", "480": "480",
+    "720": "720", "1080": "1080", "1440": "1440",
+    "4k": "4k",
+  };
+
+  function extractVideoId(videoUrl: string): string | null {
+    const m = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!url) return;
@@ -84,29 +98,47 @@ export default function Home() {
     setStatus(null);
 
     try {
-      const res = await fetch("/api/youtube/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, type: mode, format }),
-      });
-      const data = await res.json();
+      const quality = formatMap[format] || (mode === "audio" ? "mp3" : "720");
+      const initUrl = `https://p.savenow.to/api/v2/download?format=${quality}&url=${encodeURIComponent(url)}&apikey=${API_KEY}`;
+      const initRes = await fetch(initUrl);
+      const initData = await initRes.json();
 
-      if (!res.ok || data.error) {
-        setError(data.error || "Failed to process video");
+      if (!initData.success) {
+        setError("Failed to process video");
         setLoading(false);
         return;
       }
 
-      setInit(data);
+      let channel: string | null = null;
+      try {
+        const oembedRes = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+        const oembedData = await oembedRes.json();
+        channel = oembedData.author_name || null;
+      } catch {}
+
+      setInit({
+        id: initData.id,
+        progressUrl: initData.progress_url,
+        title: initData.title || initData.info?.title,
+        thumbnail: initData.thumbnail_url,
+        channel,
+        duration: null,
+      });
       setProgress(0);
 
       const interval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/youtube/status?progressUrl=${encodeURIComponent(data.progressUrl)}`);
+          const statusRes = await fetch(`https://p.savenow.to/api/progress?id=${initData.id}`);
           const statusData = await statusRes.json();
-          setStatus(statusData);
+          setStatus({
+            success: statusData.success === 1,
+            progress: statusData.progress / 10,
+            text: statusData.text,
+            downloadUrl: statusData.download_url || null,
+            title: statusData.title || null,
+          });
 
-          if (statusData.success && statusData.downloadUrl) {
+          if (statusData.success === 1 && statusData.download_url) {
             setProgress(100);
             setLoading(false);
             clearInterval(interval);
@@ -147,7 +179,7 @@ export default function Home() {
           <div className="space-y-4">
             <div>
               <BlurFade delay={0.1}>
-                <h1 className="text-2xl font-bold tracking-tight text-white">YouTube Downloader</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white">About</h1>
               </BlurFade>
             </div>
             <BlurFade delay={0.2}>
